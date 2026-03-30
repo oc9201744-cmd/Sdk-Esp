@@ -21,12 +21,11 @@ jobs:
           export THEOS=$HOME/theos
           git clone --recursive https://github.com/theos/theos.git $THEOS
           
-          # 2. SDK Kurulumu (Hata veren tar/xz kısmını düzelttik)
+          # 2. SDK Kurulumu (Daha sağlam bir kaynaktan çekiyoruz)
           mkdir -p $THEOS/sdks
-          # Dosyayı önce tam indiriyoruz (-L yönlendirmeleri takip eder, -o dosyaya yazar)
-          curl -L "https://github.com/theos/sdks/raw/master/iPhoneOS14.5.sdk.tar.xz" -o $HOME/sdk.tar.xz
-          # İndirilen dosyayı xz formatında açıyoruz
-          tar -xJf $HOME/sdk.tar.xz -C $THEOS/sdks/
+          curl -L "https://github.com/theos/sdks/archive/master.zip" -o sdks.zip
+          unzip -q sdks.zip
+          mv sdks-master/iPhoneOS14.5.sdk $THEOS/sdks/
           
           # 3. İmzama Aracı (ldid)
           brew install ldid
@@ -37,18 +36,15 @@ jobs:
 
       - name: Fix Framework Structure & Headers
         run: |
-          # JRMemory klasör yapısını kontrol et ve düzenle
           mkdir -p JRMemory.framework/Headers
           if [ -f "JRMemory.framework/MemScan.h" ]; then
             mv JRMemory.framework/MemScan.h JRMemory.framework/Headers/
           fi
-          # Kod içindeki include yollarını macOS uyumlu sed ile düzelt
           find Dolphins -name "*.mm" -exec sed -i '' 's|#include "JRMemory.framework/Headers/MemScan.h"|#import <JRMemory/MemScan.h>|g' {} +
           chmod +x JRMemory.framework/JRMemory || true
 
       - name: Build Blackshark Package
         run: |
-          # Temizle ve derle (FINALPACKAGE=1 ile optimize et)
           make clean package FINALPACKAGE=1 FOR_RELEASE=1
 
       - name: Upload Artifact (V4)
