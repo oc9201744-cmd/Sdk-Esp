@@ -1,21 +1,35 @@
+export THEOS = /var/theos
+# arm64e'yi kaldırıyoruz çünkü kütüphanelerin desteklemiyor
 ARCHS = arm64
 DEBUG = 0
 FINALPACKAGE = 1
 FOR_RELEASE = 1
-
 include $(THEOS)/makefiles/common.mk
-TWEAK_NAME = ESP
 
+TWEAK_NAME = Blackshark
 
+# Framework ve Linker Ayarları
+Blackshark_FRAMEWORKS = IOKit UIKit Foundation Security QuartzCore CoreGraphics CoreText AVFoundation Accelerate GLKit SystemConfiguration GameController
+Blackshark_EXTRA_FRAMEWORKS = JRMemory
 
-ESP_FRAMEWORKS = IOKit  UIKit Foundation Security QuartzCore CoreGraphics CoreText  AVFoundation Accelerate GLKit SystemConfiguration GameController
+# Path Ayarları
+Blackshark_CFLAGS = -fno-lto -fobjc-arc -Wno-deprecated-declarations -fvisibility=hidden -fpermissive -fexceptions -w -F$(THEOS_PROJECT_DIR) -I$(THEOS_PROJECT_DIR)/Dolphins/lib
+Blackshark_CCFLAGS = -fno-lto -std=c++17 -fno-rtti -fno-exceptions -DNDEBUG -fvisibility=hidden -fpermissive -fexceptions -w -F$(THEOS_PROJECT_DIR) -I$(THEOS_PROJECT_DIR)/Dolphins/lib
 
-ESP_CCFLAGS = -w -std=gnu++14 -fno-rtti -fno-exceptions -DNDEBUG -Wno-module-import-in-extern-c
-ESP_CFLAGS = -w -fobjc-arc -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-value
+# LDFLAGS - Dobby
+Blackshark_LDFLAGS = -L$(THEOS_PROJECT_DIR)/Dolphins/lib -ldobby -lc++ -F$(THEOS_PROJECT_DIR)
 
-ESP_FILES = $(wildcard ESP/*.mm) $(wildcard ESP/*.cpp) $(wildcard SDK/*.cpp) $(wildcard ESP/imgui/*.mm) $(wildcard ESP/imgui/*.cpp)
+Blackshark_USE_SUBSTRATE = 0
+
+# Dosya Listesi
+Blackshark_FILES = Dolphins/Dolphins.mm \
+                   $(wildcard Dolphins/View/*.m) \
+                   $(wildcard Dolphins/Module/*.mm) \
+                   $(wildcard Dolphins/utils/*.mm) \
+                   $(wildcard Dolphins/utils/*.cpp) \
+                   $(wildcard Dolphins/View/*.mm) \
+                   $(wildcard Dolphins/View/CustomView/*.mm) \
+                   $(wildcard Dolphins/imgui/*.cpp) \
+                   $(wildcard Dolphins/imgui/*.mm)
 
 include $(THEOS_MAKE_PATH)/tweak.mk
-
-
-
