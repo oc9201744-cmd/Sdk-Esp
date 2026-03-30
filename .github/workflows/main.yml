@@ -1,0 +1,56 @@
+name: Blackshark Tweak Build
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Theos & SDK
+        run: |
+          # Theos'u kullanıcı klasörüne kur (İzin hatalarını önler)
+          export THEOS=$HOME/theos
+          git clone --recursive https://github.com/theos/theos.git $THEOS
+          
+          # SDK'yı hızlıca indir ve kur
+          mkdir -p $THEOS/sdks
+          curl -L "https://github.com/theos/sdks/raw/master/iPhoneOS14.5.sdk.tar.xz" | tar -xJ -C $THEOS/sdks/
+          
+          # Gerekli araçları kur
+          brew install ldid
+          
+          # Değişkenleri GitHub ortamına kaydet
+          echo "THEOS=$THEOS" >> $GITHUB_ENV
+          echo "$THEOS/bin" >> $GITHUB_PATH
+
+      - name: Fix Framework & Headers
+        run: |
+          # JRMemory yapısını düzenle
+          mkdir -p JRMemory.framework/Headers
+          if [ -f "JRMemory.framework/MemScan.h" ]; then
+            mv JRMemory.framework/MemScan.h JRMemory.framework/Headers/
+          fi
+          # Kod içindeki include yollarını otomatik düzelt
+          find Dolphins -name "*.mm" -exec sed -i '' 's|#include "JRMemory.framework/Headers/MemScan.h"|#import <JRMemory/MemScan.h>|g' {} +
+          chmod +x JRMemory.framework/JRMemory || true
+
+      - name: Build Package
+        run: |
+          # Makefile'ı derle
+          make clean package FINALPACKAGE=1 FOR_RELEASE=1
+
+      - name: Upload DEB Artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Blackshark-Tweak-Final
+          path: packages/*.deb
