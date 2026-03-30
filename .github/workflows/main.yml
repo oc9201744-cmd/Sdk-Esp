@@ -17,38 +17,41 @@ jobs:
 
       - name: Install Theos & SDK
         run: |
-          # Theos'u kullanıcı klasörüne kur (İzin hatalarını önler)
+          # 1. Theos Kurulumu
           export THEOS=$HOME/theos
           git clone --recursive https://github.com/theos/theos.git $THEOS
           
-          # SDK'yı hızlıca indir ve kur
+          # 2. SDK Kurulumu (Hata veren tar/xz kısmını düzelttik)
           mkdir -p $THEOS/sdks
-          curl -L "https://github.com/theos/sdks/raw/master/iPhoneOS14.5.sdk.tar.xz" | tar -xJ -C $THEOS/sdks/
+          # Dosyayı önce tam indiriyoruz (-L yönlendirmeleri takip eder, -o dosyaya yazar)
+          curl -L "https://github.com/theos/sdks/raw/master/iPhoneOS14.5.sdk.tar.xz" -o $HOME/sdk.tar.xz
+          # İndirilen dosyayı xz formatında açıyoruz
+          tar -xJf $HOME/sdk.tar.xz -C $THEOS/sdks/
           
-          # Gerekli araçları kur
+          # 3. İmzama Aracı (ldid)
           brew install ldid
           
-          # Değişkenleri GitHub ortamına kaydet
+          # 4. Değişkenleri GitHub ortamına kaydet
           echo "THEOS=$THEOS" >> $GITHUB_ENV
           echo "$THEOS/bin" >> $GITHUB_PATH
 
-      - name: Fix Framework & Headers
+      - name: Fix Framework Structure & Headers
         run: |
-          # JRMemory yapısını düzenle
+          # JRMemory klasör yapısını kontrol et ve düzenle
           mkdir -p JRMemory.framework/Headers
           if [ -f "JRMemory.framework/MemScan.h" ]; then
             mv JRMemory.framework/MemScan.h JRMemory.framework/Headers/
           fi
-          # Kod içindeki include yollarını otomatik düzelt
+          # Kod içindeki include yollarını macOS uyumlu sed ile düzelt
           find Dolphins -name "*.mm" -exec sed -i '' 's|#include "JRMemory.framework/Headers/MemScan.h"|#import <JRMemory/MemScan.h>|g' {} +
           chmod +x JRMemory.framework/JRMemory || true
 
-      - name: Build Package
+      - name: Build Blackshark Package
         run: |
-          # Makefile'ı derle
+          # Temizle ve derle (FINALPACKAGE=1 ile optimize et)
           make clean package FINALPACKAGE=1 FOR_RELEASE=1
 
-      - name: Upload DEB Artifact
+      - name: Upload Artifact (V4)
         if: success()
         uses: actions/upload-artifact@v4
         with:
