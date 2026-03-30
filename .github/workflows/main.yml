@@ -17,36 +17,37 @@ jobs:
 
       - name: Install Theos & iOS SDK
         run: |
-          # 1. Theos Kurulumu
           export THEOS=$HOME/theos
           git clone --recursive https://github.com/theos/theos.git $THEOS
-          
-          # 2. iOS 14.5 SDK Kurulumu (Derleyici için gerekli olan sistem SDK'sı)
           git clone --depth=1 https://github.com/theos/sdks.git $THEOS/sdks_temp
           mv $THEOS/sdks_temp/iPhoneOS14.5.sdk $THEOS/sdks/
           rm -rf $THEOS/sdks_temp
-          
-          # 3. ldid kurulumu
           brew install ldid
-          
-          # Değişkenleri kaydet
           echo "THEOS=$THEOS" >> $GITHUB_ENV
           echo "$THEOS/bin" >> $GITHUB_PATH
 
-      - name: Extract Project SDK Zip
+      - name: Extract Project SDK Zip & Fix Plist
         run: |
-          # SDK klasörü içindeki SDK.zip dosyasını açıyoruz
+          # 1. SDK Zip'i açıyoruz
           if [ -f "SDK/SDK.zip" ]; then
             unzip -o SDK/SDK.zip -d SDK/
-            echo "✅ SDK.zip başarıyla açıldı."
+            echo "✅ SDK.zip açıldı."
+          fi
+          
+          # 2. KRİTİK HATA ÇÖZÜMÜ: ESP.plist'i Blackshark.plist olarak kopyala
+          # Theos, TWEAK_NAME neyse o isimde plist bekler.
+          if [ -f "ESP.plist" ]; then
+            cp ESP.plist Blackshark.plist
+            echo "✅ ESP.plist, Blackshark.plist olarak hazırlandı."
           else
-            echo "❌ SDK/SDK.zip bulunamadı!"
+            echo "❌ ESP.plist bulunamadı! Lütfen dosya adını kontrol et."
             exit 1
           fi
 
       - name: Build Blackshark Package
         run: |
-          # Makefile'ı çalıştır
+          export THEOS=$HOME/theos
+          export PATH=$THEOS/bin:$PATH
           make clean package FINALPACKAGE=1 FOR_RELEASE=1
 
       - name: Upload Artifact (V4)
