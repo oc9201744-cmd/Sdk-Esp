@@ -15,41 +15,43 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Theos & SDK
+      - name: Install Theos & iOS SDK
         run: |
           # 1. Theos Kurulumu
           export THEOS=$HOME/theos
           git clone --recursive https://github.com/theos/theos.git $THEOS
           
-          # 2. SDK Kurulumu (Daha sağlam bir kaynaktan çekiyoruz)
-          mkdir -p $THEOS/sdks
-          curl -L "https://github.com/theos/sdks/archive/master.zip" -o sdks.zip
-          unzip -q sdks.zip
-          mv sdks-master/iPhoneOS14.5.sdk $THEOS/sdks/
+          # 2. iOS 14.5 SDK Kurulumu (Derleyici için gerekli olan sistem SDK'sı)
+          git clone --depth=1 https://github.com/theos/sdks.git $THEOS/sdks_temp
+          mv $THEOS/sdks_temp/iPhoneOS14.5.sdk $THEOS/sdks/
+          rm -rf $THEOS/sdks_temp
           
-          # 3. İmzama Aracı (ldid)
+          # 3. ldid kurulumu
           brew install ldid
           
-          # 4. Değişkenleri GitHub ortamına kaydet
+          # Değişkenleri kaydet
           echo "THEOS=$THEOS" >> $GITHUB_ENV
           echo "$THEOS/bin" >> $GITHUB_PATH
 
-      - name: Fix Framework Structure & Headers
+      - name: Extract Project SDK Zip
         run: |
-          mkdir -p JRMemory.framework/Headers
-          if [ -f "JRMemory.framework/MemScan.h" ]; then
-            mv JRMemory.framework/MemScan.h JRMemory.framework/Headers/
+          # SDK klasörü içindeki SDK.zip dosyasını açıyoruz
+          if [ -f "SDK/SDK.zip" ]; then
+            unzip -o SDK/SDK.zip -d SDK/
+            echo "✅ SDK.zip başarıyla açıldı."
+          else
+            echo "❌ SDK/SDK.zip bulunamadı!"
+            exit 1
           fi
-          find Dolphins -name "*.mm" -exec sed -i '' 's|#include "JRMemory.framework/Headers/MemScan.h"|#import <JRMemory/MemScan.h>|g' {} +
-          chmod +x JRMemory.framework/JRMemory || true
 
       - name: Build Blackshark Package
         run: |
+          # Makefile'ı çalıştır
           make clean package FINALPACKAGE=1 FOR_RELEASE=1
 
       - name: Upload Artifact (V4)
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Blackshark-Tweak-Final
+          name: Blackshark-DEB
           path: packages/*.deb
