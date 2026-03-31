@@ -28,6 +28,36 @@
 #include "imgui_notify.h"
 #import "font.h"
 
+// ============================================
+// ANTI-DETECTION BYPASS - ONURCAN MOD
+// ============================================
+#include <substrate.h>
+#include <mach-o/dyld.h>
+
+static int (*orig_sysctl)(int *, u_int, void *, size_t *, void *, size_t);
+static int hook_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp, size_t newlen) {
+    if (oldp && oldlenp) {
+        memset(oldp, 0, *oldlenp);
+    }
+    return 0;
+}
+
+static int (*orig_ptrace)(int, pid_t, caddr_t, int);
+static int hook_ptrace(int request, pid_t pid, caddr_t addr, int data) {
+    return 0;
+}
+
+__attribute__((constructor))
+static void anti_detection_init() {
+    uintptr_t base = _dyld_get_image_vmaddr_slide(0);
+    void *sysctl_addr = (void *)(base + 0x00121C30);
+    void *ptrace_addr = (void *)(base + 0x00121D88);
+    MSHookFunction(sysctl_addr, (void *)&hook_sysctl, (void **)&orig_sysctl);
+    MSHookFunction(ptrace_addr, (void *)&hook_ptrace, (void **)&orig_ptrace);
+}
+// ============================================
+
+
 #define kWidth[UIScreen mainScreen].bounds.size.width
 #define kHeight[UIScreen mainScreen].bounds.size.height
 
@@ -453,12 +483,37 @@ namespace Settings {
 
       ImGui::SetNextWindowPos(ImVec2(x,
         y), ImGuiCond_FirstUseEver);
-      ImGui::SetNextWindowSize(ImVec2(500,
-        320), ImGuiCond_FirstUseEver);
+      // Onurcan Mod - Dolphins Style Menu
+      ImGui::SetNextWindowSize(ImVec2(900, 550), ImGuiCond_FirstUseEver);
+      ImGui::SetNextWindowPos(ImVec2(200, 150), ImGuiCond_FirstUseEver);
 
       if (MenDeal == true) {
 
-        ImGui::Begin(("SAQER | Free Src Soon!")  , & MenDeal);
+        ImGui::Begin(("ONURCAN MOD VIP")  , & MenDeal, ImGuiWindowFlags_NoCollapse);
+        
+        // ========== VIP PREMIUM STYLE - ONURCAN MOD ==========
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 10.0f);  // Daha yuvarlak
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 8.0f));  // Daha geniş padding
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(12.0f, 14.0f));  // Daha geniş spacing
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 16.0f));  // Window padding
+        
+        // VIP Gold/Blue Premium color scheme
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImColor(15, 15, 20, 240).Value);  // Dark background
+        ImGui::PushStyleColor(ImGuiCol_TitleBg, ImColor(40, 120, 220, 255).Value);  // Blue title
+        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImColor(55, 140, 240, 255).Value);  // Bright blue
+        ImGui::PushStyleColor(ImGuiCol_Button, ImColor(30, 30, 35, 200).Value);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColor(40, 120, 220, 220).Value);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColor(55, 140, 240, 255).Value);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImColor(25, 25, 30, 180).Value);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImColor(35, 35, 40, 220).Value);
+        ImGui::PushStyleColor(ImGuiCol_CheckMark, ImColor(255, 215, 0, 255).Value);  // Gold checkmark
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImColor(255, 215, 0, 200).Value);  // Gold slider
+        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImColor(255, 235, 50, 255).Value);  // Bright gold
+        ImGui::PushStyleColor(ImGuiCol_Header, ImColor(40, 120, 220, 150).Value);  // Blue header
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImColor(55, 140, 240, 200).Value);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImColor(70, 160, 255, 255).Value);
+        // =====================================================
+
 
         {
           ImGui::Columns(2);
@@ -578,6 +633,12 @@ namespace Settings {
         }
         ImGui::EndTabBar(); 
       }
+      
+      // ========== VIP STYLE CLEANUP ==========
+      ImGui::PopStyleColor(14);  // 14 color
+      ImGui::PopStyleVar(4);     // 4 style var
+      // =======================================
+      
       ImGui::End();
 
       ImGui::Render();
@@ -849,6 +910,7 @@ ASTExtraPlayerController * g_PlayerController;
 #define COLOR_RED FLinearColor(1.f, 0, 0, 1.f)
 #define COLOR_LIME FLinearColor(0, 1.f, 0, 1.f)
 #define COLOR_BLUE FLinearColor(0, 0, 1.f, 1.f)
+#define COLOR_NEON_CYAN FLinearColor(0.22f, 1.f, 1.f, 1.f)  // Neon Blue/Cyan - ONURCAN MOD
 #define COLOR_CAR FLinearColor(1.f, 0.5f, 1.f, 1.f)
 #define GREEN FLinearColor(0 / 255.f, 153 / 255.f, 0 / 255.f, 1.f)
 #define ABU FLinearColor(0 / 255.f, 204 / 255.f, 204 / 255.f, 1.f)
@@ -1888,10 +1950,10 @@ void RenderESP(AHUD * HUD, int ScreenWidth, int ScreenHeight) {
                             bool IsVisibles = g_PlayerController -> LineOfSightTo(g_PlayerController -> PlayerCameraManager, Player -> GetBonePos(currentBone.c_str(), {}), true);
                             if (IsVisibles) {
                               if (Player -> bEnsure) {
-                                DrawLine(HUD, boneFrom, boneTo, EspSktonThik, COLOR_LIME);
+                                DrawLine(HUD, boneFrom, boneTo, EspSktonThik, COLOR_NEON_CYAN);
                                 
                               } else {
-                                DrawLine(HUD, boneFrom, boneTo, EspSktonThik, COLOR_LIME);
+                                DrawLine(HUD, boneFrom, boneTo, EspSktonThik, COLOR_NEON_CYAN);
                                 
                               }
                             } else {
