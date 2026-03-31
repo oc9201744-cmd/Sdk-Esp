@@ -453,70 +453,32 @@ namespace Settings {
 
       ImGui::SetNextWindowPos(ImVec2(x,
         y), ImGuiCond_FirstUseEver);
-      // Onurcan Mod - Dolphins Style Menu
-      ImGui::SetNextWindowSize(ImVec2(900, 550), ImGuiCond_FirstUseEver);
-      ImGui::SetNextWindowPos(ImVec2(200, 150), ImGuiCond_FirstUseEver);
+      ImGui::SetNextWindowSize(ImVec2(500,
+        320), ImGuiCond_FirstUseEver);
 
       if (MenDeal == true) {
 
-        ImGui::SetNextWindowSize({1280, 700}, ImGuiCond_FirstUseEver);
-        ImGui::Begin(("ONURCAN MOD VIP"), &MenDeal, ImGuiWindowFlags_NoCollapse);
+        ImGui::Begin(("SAQER | Free Src Soon!")  , & MenDeal);
 
-        // ========== LEFT PANEL - BUTTONS ==========
-        float leftWidth = 185.0f;
-        ImGui::BeginChild("##leftPanel", {leftWidth, 0}, true, ImGuiWindowFlags_None);
-        
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 14.0f));
-        
-        const char* menuButtons[] = {"HOME", "MENU ESP", "MENU ITEM", "MENU AIM", "Aim settings", "Skins"};
-        
-        for (int i = 0; i < 6; i++) {
-            // Active button - blue
-            if (Settings::Tab == i) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImColor(40, 120, 220, 180).Value);
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColor(55, 140, 240, 220).Value);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColor(30, 100, 200, 255).Value);
-            } 
-            // Inactive button - dark gray
-            else {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImColor(20, 20, 20, 120).Value);
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColor(40, 40, 40, 180).Value);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColor(55, 55, 55, 220).Value);
-            }
-            
-            if (ImGui::Button(menuButtons[i], ImVec2(leftWidth - 18.0f, 42.0f))) {
-                Settings::Tab = i;
-            }
-            
-            ImGui::PopStyleColor(3);
+        {
+          ImGui::Columns(2);
+          ImGui::SetColumnOffset(1, 140);
+          {
+
+            if (ImGui::Button(ICON_FA_GEAR "ESP", ImVec2(100, 85)))
+              Settings::Tab = 8;
+
+            if (ImGui::Button(ICON_FA_CROSSHAIRS "AIM TRACK", ImVec2(100, 85)))
+              Settings::Tab = 9;
+
+          }
         }
+        ImGui::NextColumn();
+
         
-        ImGui::PopStyleVar(2);
-        ImGui::EndChild();
-        
-        ImGui::SameLine();
-        
-        // ========== RIGHT PANEL - CONTENT ==========
-        ImGui::BeginChild("##rightPanel", {0, 0}, false, ImGuiWindowFlags_None);
-        
-        switch (Settings::Tab) {
-            case 0: // HOME
-                ImGui::Text("ONURCAN MOD VIP");
-                ImGui::Text("PUBG Mobile v4.3.0");
-                ImGui::Separator();
-                ImGui::Text("Features:");
-                ImGui::BulletText("ESP System");
-                ImGui::BulletText("Aim System");
-                ImGui::BulletText("Neon Cyan Skeleton");
-                break;
-                
-            case 1: // MENU ESP
+        if (Settings::Tab == 8) {
 
           ImGui::Spacing();
-          
-          ImGui::Text("ENABLE ESP");
-          ImGui::Separator();
           
           if (ImGui::BeginTable("esp_toggles", 4, ImGuiTableFlags_SizingFixedFit)) {
             ImGui::TableNextRow();
@@ -551,19 +513,12 @@ namespace Settings {
 
             ImGui::EndTable();
           }
-          break;
-          
-            case 2: // MENU ITEM
-                ImGui::Text("ITEMS - Coming Soon");
-                break;
-                
-            case 3: // MENU AIM
+
+          ImGui::EndTabItem();
+
+        } else if (Settings::Tab == 9) {
 
           ImGui::Spacing();
-          
-          ImGui::Text("AIM SETTINGS");
-          ImGui::Separator();
-          
           if (ImGui::Checkbox(("BULLET TRACK SIFT"), &
               preferences.Config.SilentAim.Enable)) {}
 
@@ -607,23 +562,22 @@ namespace Settings {
               triggers,
               5,
               -1)) {}
-          break;
-          
-            case 4: // Aim settings (duplicate)
-                ImGui::Text("ADVANCED AIM - Coming Soon");
-                break;
-                
-            case 5: // Skins
-                ImGui::Text("SKINS - Coming Soon");
-                break;
-                
-            default:
-                ImGui::Text("HOME");
-                break;
+
+          ImGui::SameLine();
+          if (ImGui::Checkbox("IgnoreKnocked", & preferences.Config.SilentAim.IgnoreKnocked)) {}
+          ImGui::SameLine();
+          if (ImGui::Checkbox("IgnoreBot", & preferences.Config.SilentAim.IgnoreBot)) {}
+
+          ImGui::Checkbox("Wide View", & WideView);
+          if (WideView) {
+            ImGui::SliderInt("Field of View", & WideValue, 90, 140);
+
+          }
+          ImGui::EndTabItem();
+
         }
-        
-        ImGui::EndChild(); // End right panel
-      
+        ImGui::EndTabBar(); 
+      }
       ImGui::End();
 
       ImGui::Render();
@@ -895,7 +849,6 @@ ASTExtraPlayerController * g_PlayerController;
 #define COLOR_RED FLinearColor(1.f, 0, 0, 1.f)
 #define COLOR_LIME FLinearColor(0, 1.f, 0, 1.f)
 #define COLOR_BLUE FLinearColor(0, 0, 1.f, 1.f)
-#define COLOR_NEON_CYAN FLinearColor(0.22f, 1.f, 1.f, 1.f)  // Neon Blue/Cyan - ONURCAN MOD
 #define COLOR_CAR FLinearColor(1.f, 0.5f, 1.f, 1.f)
 #define GREEN FLinearColor(0 / 255.f, 153 / 255.f, 0 / 255.f, 1.f)
 #define ABU FLinearColor(0 / 255.f, 204 / 255.f, 204 / 255.f, 1.f)
@@ -1935,10 +1888,10 @@ void RenderESP(AHUD * HUD, int ScreenWidth, int ScreenHeight) {
                             bool IsVisibles = g_PlayerController -> LineOfSightTo(g_PlayerController -> PlayerCameraManager, Player -> GetBonePos(currentBone.c_str(), {}), true);
                             if (IsVisibles) {
                               if (Player -> bEnsure) {
-                                DrawLine(HUD, boneFrom, boneTo, EspSktonThik, COLOR_NEON_CYAN);
+                                DrawLine(HUD, boneFrom, boneTo, EspSktonThik, COLOR_LIME);
                                 
                               } else {
-                                DrawLine(HUD, boneFrom, boneTo, EspSktonThik, COLOR_NEON_CYAN);
+                                DrawLine(HUD, boneFrom, boneTo, EspSktonThik, COLOR_LIME);
                                 
                               }
                             } else {
