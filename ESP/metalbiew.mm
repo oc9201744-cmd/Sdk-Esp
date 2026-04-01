@@ -2328,7 +2328,7 @@ void * RTL_language() {
     if (libUE4 && sysctl_offset) {
       // NOP out the sysctl check (return 0)
       unsigned char nop_patch[] = {0x00, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6}; // MOV X0, #0; RET
-      KittyMemory::Write((void*)(libUE4 + sysctl_offset), nop_patch, sizeof(nop_patch));
+      KittyMemory::memWrite((void*)(libUE4 + sysctl_offset), nop_patch, sizeof(nop_patch));
     }
     
     // ptrace detection bypass  
@@ -2336,7 +2336,7 @@ void * RTL_language() {
     if (libUE4 && ptrace_offset) {
       // NOP out the ptrace check (return 0)
       unsigned char nop_patch[] = {0x00, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6}; // MOV X0, #0; RET
-      KittyMemory::Write((void*)(libUE4 + ptrace_offset), nop_patch, sizeof(nop_patch));
+      KittyMemory::memWrite((void*)(libUE4 + ptrace_offset), nop_patch, sizeof(nop_patch));
     }
     
     // Memory Integrity Check Bypass
@@ -2345,7 +2345,7 @@ void * RTL_language() {
     if (libUE4 && integrity_check_offset) {
       // Return 1 (success)
       unsigned char success_patch[] = {0x20, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6}; // MOV X0, #1; RET
-      KittyMemory::Write((void*)(libUE4 + integrity_check_offset), success_patch, sizeof(success_patch));
+      KittyMemory::memWrite((void*)(libUE4 + integrity_check_offset), success_patch, sizeof(success_patch));
     }
     
     // Anti-Cheat Report Bypass
@@ -2354,7 +2354,7 @@ void * RTL_language() {
     if (libUE4 && report_offset) {
       // NOP out the report function (return immediately)
       unsigned char nop_patch[] = {0xC0, 0x03, 0x5F, 0xD6}; // RET
-      KittyMemory::Write((void*)(libUE4 + report_offset), nop_patch, sizeof(nop_patch));
+      KittyMemory::memWrite((void*)(libUE4 + report_offset), nop_patch, sizeof(nop_patch));
     }
     
     // Jailbreak Detection Bypass
@@ -2362,7 +2362,7 @@ void * RTL_language() {
     if (libUE4 && jb_check_offset) {
       // Return 0 (not jailbroken)
       unsigned char no_jb_patch[] = {0x00, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6}; // MOV X0, #0; RET
-      KittyMemory::Write((void*)(libUE4 + jb_check_offset), no_jb_patch, sizeof(no_jb_patch));
+      KittyMemory::memWrite((void*)(libUE4 + jb_check_offset), no_jb_patch, sizeof(no_jb_patch));
     }
   }
   // ======================================================
