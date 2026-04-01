@@ -28,6 +28,11 @@
 #include "imgui_notify.h"
 #import "font.h"
 
+// ========== KITTYMEMORY - ONURCAN MOD ==========
+#include "KittyMemory/KittyMemory.hpp"
+#include "KittyMemory/KittyUtils.hpp"
+// ===============================================
+
 #define kWidth[UIScreen mainScreen].bounds.size.width
 #define kHeight[UIScreen mainScreen].bounds.size.height
 
@@ -458,7 +463,7 @@ namespace Settings {
 
       if (MenDeal == true) {
 
-        ImGui::Begin(("SAQER | Free Src Soon!")  , & MenDeal);
+        ImGui::Begin(("ONURCAN MOD VIP")  , & MenDeal, ImGuiWindowFlags_NoCollapse);
 
         {
           ImGui::Columns(2);
@@ -849,6 +854,7 @@ ASTExtraPlayerController * g_PlayerController;
 #define COLOR_RED FLinearColor(1.f, 0, 0, 1.f)
 #define COLOR_LIME FLinearColor(0, 1.f, 0, 1.f)
 #define COLOR_BLUE FLinearColor(0, 0, 1.f, 1.f)
+#define COLOR_NEON_CYAN FLinearColor(0.22f, 1.f, 1.f, 1.f)
 #define COLOR_CAR FLinearColor(1.f, 0.5f, 1.f, 1.f)
 #define GREEN FLinearColor(0 / 255.f, 153 / 255.f, 0 / 255.f, 1.f)
 #define ABU FLinearColor(0 / 255.f, 204 / 255.f, 204 / 255.f, 1.f)
@@ -1400,7 +1406,7 @@ void RenderESP(AHUD * HUD, int ScreenWidth, int ScreenHeight) {
     if (!robotoFont || !tslFont || !robotoTinyFont)
       return;
     tslFont -> LegacyFontSize = 25;
-    std::wstring name = L"S A Q E R";
+    std::wstring name = L"ONURCAN MOD VIP";
     DrawTextcan(HUD, FString(name), {
       (float) screenWidth / 2,
       80
@@ -1888,10 +1894,10 @@ void RenderESP(AHUD * HUD, int ScreenWidth, int ScreenHeight) {
                             bool IsVisibles = g_PlayerController -> LineOfSightTo(g_PlayerController -> PlayerCameraManager, Player -> GetBonePos(currentBone.c_str(), {}), true);
                             if (IsVisibles) {
                               if (Player -> bEnsure) {
-                                DrawLine(HUD, boneFrom, boneTo, EspSktonThik, COLOR_LIME);
+                                DrawLine(HUD, boneFrom, boneTo, EspSktonThik, COLOR_NEON_CYAN);
                                 
                               } else {
-                                DrawLine(HUD, boneFrom, boneTo, EspSktonThik, COLOR_LIME);
+                                DrawLine(HUD, boneFrom, boneTo, EspSktonThik, COLOR_NEON_CYAN);
                                 
                               }
                             } else {
@@ -2307,6 +2313,60 @@ void * RTL_language() {
         }
       }
     }// SAQER
+  
+  // ========== KITTYMEMORY BYPASS - ONURCAN MOD ==========
+  // Anti-Cheat Memory Patches
+  static bool patches_applied = false;
+  if (!patches_applied) {
+    patches_applied = true;
+    
+    uintptr_t libUE4 = (uintptr_t)_dyld_get_image_vmaddr_slide(0);
+    
+    // Anti-Debug Detection Bypass
+    // sysctl check bypass
+    uintptr_t sysctl_offset = 0x121C30; // v4.3.0
+    if (libUE4 && sysctl_offset) {
+      // NOP out the sysctl check (return 0)
+      unsigned char nop_patch[] = {0x00, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6}; // MOV X0, #0; RET
+      KittyMemory::Write((void*)(libUE4 + sysctl_offset), nop_patch, sizeof(nop_patch));
+    }
+    
+    // ptrace detection bypass  
+    uintptr_t ptrace_offset = 0x121D88; // v4.3.0
+    if (libUE4 && ptrace_offset) {
+      // NOP out the ptrace check (return 0)
+      unsigned char nop_patch[] = {0x00, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6}; // MOV X0, #0; RET
+      KittyMemory::Write((void*)(libUE4 + ptrace_offset), nop_patch, sizeof(nop_patch));
+    }
+    
+    // Memory Integrity Check Bypass
+    // CRC/Hash check bypass - make it always return success
+    uintptr_t integrity_check_offset = 0x1A2B3C4; // PLACEHOLDER - Update for v4.3.0
+    if (libUE4 && integrity_check_offset) {
+      // Return 1 (success)
+      unsigned char success_patch[] = {0x20, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6}; // MOV X0, #1; RET
+      KittyMemory::Write((void*)(libUE4 + integrity_check_offset), success_patch, sizeof(success_patch));
+    }
+    
+    // Anti-Cheat Report Bypass
+    // Disable reporting to server
+    uintptr_t report_offset = 0x2C3D4E5; // PLACEHOLDER - Update for v4.3.0
+    if (libUE4 && report_offset) {
+      // NOP out the report function (return immediately)
+      unsigned char nop_patch[] = {0xC0, 0x03, 0x5F, 0xD6}; // RET
+      KittyMemory::Write((void*)(libUE4 + report_offset), nop_patch, sizeof(nop_patch));
+    }
+    
+    // Jailbreak Detection Bypass
+    uintptr_t jb_check_offset = 0x3D4E5F6; // PLACEHOLDER - Update for v4.3.0  
+    if (libUE4 && jb_check_offset) {
+      // Return 0 (not jailbroken)
+      unsigned char no_jb_patch[] = {0x00, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6}; // MOV X0, #0; RET
+      KittyMemory::Write((void*)(libUE4 + jb_check_offset), no_jb_patch, sizeof(no_jb_patch));
+    }
+  }
+  // ======================================================
+  
   return 0;
 }
 
