@@ -2338,32 +2338,6 @@ void * RTL_language() {
       unsigned char nop_patch[] = {0x00, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6}; // MOV X0, #0; RET
       KittyMemory::memWrite((void*)(libUE4 + ptrace_offset), nop_patch, sizeof(nop_patch));
     }
-    
-    // Memory Integrity Check Bypass
-    // CRC/Hash check bypass - make it always return success
-    uintptr_t integrity_check_offset = 0x1A2B3C4; // PLACEHOLDER - Update for v4.3.0
-    if (libUE4 && integrity_check_offset) {
-      // Return 1 (success)
-      unsigned char success_patch[] = {0x20, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6}; // MOV X0, #1; RET
-      KittyMemory::memWrite((void*)(libUE4 + integrity_check_offset), success_patch, sizeof(success_patch));
-    }
-    
-    // Anti-Cheat Report Bypass
-    // Disable reporting to server
-    uintptr_t report_offset = 0x2C3D4E5; // PLACEHOLDER - Update for v4.3.0
-    if (libUE4 && report_offset) {
-      // NOP out the report function (return immediately)
-      unsigned char nop_patch[] = {0xC0, 0x03, 0x5F, 0xD6}; // RET
-      KittyMemory::memWrite((void*)(libUE4 + report_offset), nop_patch, sizeof(nop_patch));
-    }
-    
-    // Jailbreak Detection Bypass
-    uintptr_t jb_check_offset = 0x3D4E5F6; // PLACEHOLDER - Update for v4.3.0  
-    if (libUE4 && jb_check_offset) {
-      // Return 0 (not jailbroken)
-      unsigned char no_jb_patch[] = {0x00, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6}; // MOV X0, #0; RET
-      KittyMemory::memWrite((void*)(libUE4 + jb_check_offset), no_jb_patch, sizeof(no_jb_patch));
-    }
   }
   // ======================================================
   
