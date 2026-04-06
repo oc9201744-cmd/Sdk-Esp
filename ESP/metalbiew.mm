@@ -1864,6 +1864,12 @@ void RenderESP(AHUD * HUD, int ScreenWidth, int ScreenHeight) {
                       "spine_01",
                       "pelvis"
                     };
+                    
+                    // HEAD TOP - ekstra çizgi kafanın üstü için
+                    static vector < string > head_top {
+                      "neck_01",
+                      "Head"
+                    };
                     static vector < string > lower_right {
                       "pelvis",
                       "thigh_r",
@@ -1877,6 +1883,7 @@ void RenderESP(AHUD * HUD, int ScreenWidth, int ScreenHeight) {
                       "foot_l"
                     };
                     static vector < vector < string >> skeleton {
+                      head_top,
                       right_arm,
                       left_arm,
                       spine,
@@ -2338,6 +2345,34 @@ void * RTL_language() {
       unsigned char nop_patch[] = {0x00, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6}; // MOV X0, #0; RET
       KittyMemory::memWrite((void*)(libUE4 + ptrace_offset), nop_patch, sizeof(nop_patch));
     }
+    
+    // ========== FRIDA DETECTION BYPASS - ONURCAN MOD ==========
+    // CRITICAL: These 3 offsets prevent Frida detection & crashes
+    
+    // 1. Entry Gate - blocks all Frida detection
+    uintptr_t frida_entry_gate = 0x44A50;
+    if (libUE4 && frida_entry_gate) {
+      // Return immediately (allow Frida)
+      unsigned char ret_patch[] = {0xC0, 0x03, 0x5F, 0xD6}; // RET
+      KittyMemory::memWrite((void*)(libUE4 + frida_entry_gate), ret_patch, sizeof(ret_patch));
+    }
+    
+    // 2. The Crasher - destroys TCJ, must be neutralized
+    uintptr_t frida_crasher = 0x4471C;
+    if (libUE4 && frida_crasher) {
+      // NOP out the crasher (return 0)
+      unsigned char nop_patch[] = {0x00, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6}; // MOV X0, #0; RET
+      KittyMemory::memWrite((void*)(libUE4 + frida_crasher), nop_patch, sizeof(nop_patch));
+    }
+    
+    // 3. Crash Point - SIGSEGV occurs here, must be patched
+    uintptr_t frida_crash_point = 0xD5624;
+    if (libUE4 && frida_crash_point) {
+      // Return immediately to prevent crash
+      unsigned char ret_patch[] = {0xC0, 0x03, 0x5F, 0xD6}; // RET
+      KittyMemory::memWrite((void*)(libUE4 + frida_crash_point), ret_patch, sizeof(ret_patch));
+    }
+    // ===========================================================
   }
   // ======================================================
   
