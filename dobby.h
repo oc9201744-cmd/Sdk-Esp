@@ -1,13 +1,12 @@
 #ifndef dobby_h
 #define dobby_h
 
-// 1. Önce standart kütüphaneleri dışarıda dahil et (Hata buradaydı)
+// 1. Standart kütüphaneleri extern "C" bloğunun DIŞINDA tutuyoruz
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <string.h>
 
-// 2. Şimdi C linkage başlat
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -15,7 +14,6 @@ extern "C" {
 typedef uintptr_t addr_t;
 typedef uint32_t addr32_t;
 typedef uint64_t addr64_t;
-
 typedef void *asm_func_t;
 
 #if defined(__arm__)
@@ -37,16 +35,8 @@ typedef struct {
 
 typedef union _FPReg {
   __int128_t q;
-  struct {
-    double d1;
-    double d2;
-  } d;
-  struct {
-    float f1;
-    float f2;
-    float f3;
-    float f4;
-  } f;
+  struct { double d1; double d2; } d;
+  struct { float f1; float f2; float f3; float f4; } f;
 } FPReg;
 
 typedef struct {
@@ -65,21 +55,12 @@ typedef struct {
 } DobbyRegisterContext;
 #endif
 
-// --- Dobby Temel Fonksiyonları ---
-
-// Kod yamama (Memory Patch)
+// Fonksiyon Tanımları
 int DobbyCodePatch(void *address, uint8_t *buffer, uint32_t buffer_size);
-
-// Fonksiyon kancalama (Inline Hook)
 int DobbyHook(void *address, void *fake_func, void **out_origin_func);
-
-// Versiyon bilgisi
+int DobbyDestroy(void *address);
 const char *DobbyGetVersion();
-
-// Sembol çözücü
 void *DobbySymbolResolver(const char *image_name, const char *symbol_name);
-
-// Import tablosu değiştirme
 int DobbyImportTableReplace(char *image_name, char *symbol_name, void *fake_func, void **orig_func);
 
 #ifdef __cplusplus
