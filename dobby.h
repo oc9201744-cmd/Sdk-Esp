@@ -1,11 +1,10 @@
 #ifndef dobby_h
 #define dobby_h
 
-// 1. Standart kütüphaneleri extern "C" bloğunun DIŞINDA tutuyoruz
+// 1. Standart kütüphaneleri extern "C" bloğunun DIŞINA aldık
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
-#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,7 +39,7 @@ typedef union _FPReg {
 } FPReg;
 
 typedef struct {
-  uint64_t dummy_0;
+  uint64_t dmmpy_0;
   uint64_t dummy_1;
   uint64_t sp;
   union {
@@ -55,7 +54,7 @@ typedef struct {
 } DobbyRegisterContext;
 #endif
 
-// Fonksiyon Tanımları
+// Fonksiyonlar
 int DobbyCodePatch(void *address, uint8_t *buffer, uint32_t buffer_size);
 int DobbyHook(void *address, void *fake_func, void **out_origin_func);
 int DobbyDestroy(void *address);
