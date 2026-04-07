@@ -19,43 +19,34 @@ jobs:
         run: |
           export THEOS=$HOME/theos
           git clone --recursive https://github.com/theos/theos.git $THEOS
-          
-          # SDK Kurulumu
           git clone --depth=1 https://github.com/theos/sdks.git $THEOS/sdks_temp
           mv $THEOS/sdks_temp/iPhoneOS14.5.sdk $THEOS/sdks/
           rm -rf $THEOS/sdks_temp
-          
-          # --- KRİTİK: SUBSTRATE FIX ---
-          # substrate.h dosyasını doğrudan içeriğiyle indiriyoruz
-          curl -L "https://raw.githubusercontent.com/theos/headers/master/CydiaSubstrate.h" -o $THEOS/include/substrate.h
-          
-          # libsubstrate.dylib kütüphanesini indiriyoruz
-          mkdir -p $THEOS/lib
-          curl -L "https://github.com/theos/lib/raw/master/libsubstrate.dylib" -o $THEOS/lib/libsubstrate.dylib
-          # ------------------------------
-
           brew install ldid
           echo "THEOS=$THEOS" >> $GITHUB_ENV
           echo "$THEOS/bin" >> $GITHUB_PATH
 
-      - name: Prepare Files
+      - name: Prepare Files (SDK & Plist)
         run: |
-          # SDK klasörü içindeki zip'i aç (varsa)
+          # 1. SDK.zip varsa aç
           if [ -f "SDK/SDK.zip" ]; then
             unzip -o SDK/SDK.zip -d SDK/
           fi
           
-          # Theos'un hata vermemesi için Plist kontrolü
-          [ -f "ESP.plist" ] && cp ESP.plist Blackshark.plist || echo "Plist zaten hazır veya ESP.plist yok."
+          # 2. Plist ismini Blackshark.plist yap (Theos hata vermemesi için)
+          [ -f "ESP.plist" ] && cp ESP.plist Blackshark.plist || echo "Plist hazır."
+          
+          # 3. Klasörleri kontrol et (Hata ayıklama için loglara basar)
+          echo "--- Klasör Yapısı ---"
+          ls -d KittyMemory/ SDK/ ESP/ 2>/dev/null || echo "Klasörler eksik olabilir!"
 
       - name: Build Blackshark Package
         run: |
           export THEOS=$HOME/theos
           export PATH=$THEOS/bin:$PATH
-          # Önceki hatalı derleme kalıntılarını temizle ve paketi oluştur
           make clean package FINALPACKAGE=1 FOR_RELEASE=1
 
-      - name: Upload Artifact
+      - name: Upload Artifact (V4)
         if: success()
         uses: actions/upload-artifact@v4
         with:
