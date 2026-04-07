@@ -21,24 +21,23 @@ jobs:
           git clone --recursive https://github.com/theos/theos.git $THEOS
           git clone --depth=1 https://github.com/theos/sdks.git $THEOS/sdks_temp
           mv $THEOS/sdks_temp/iPhoneOS14.5.sdk $THEOS/sdks/
+          
+          # Substrate Header ve Library Dosyalarını Çekiyoruz (Kritik Adım)
+          curl -L https://raw.githubusercontent.com/theos/headers/master/substrate.h -o $THEOS/include/substrate.h
+          mkdir -p $THEOS/lib
+          curl -L https://github.com/theos/lib/raw/master/libsubstrate.dylib -o $THEOS/lib/libsubstrate.dylib
+          
           rm -rf $THEOS/sdks_temp
           brew install ldid
           echo "THEOS=$THEOS" >> $GITHUB_ENV
           echo "$THEOS/bin" >> $GITHUB_PATH
 
-      - name: Prepare Files (SDK & Plist)
+      - name: Prepare Files
         run: |
-          # 1. SDK.zip varsa aç
           if [ -f "SDK/SDK.zip" ]; then
             unzip -o SDK/SDK.zip -d SDK/
           fi
-          
-          # 2. Plist ismini Blackshark.plist yap (Theos hata vermemesi için)
           [ -f "ESP.plist" ] && cp ESP.plist Blackshark.plist || echo "Plist hazır."
-          
-          # 3. Klasörleri kontrol et (Hata ayıklama için loglara basar)
-          echo "--- Klasör Yapısı ---"
-          ls -d KittyMemory/ SDK/ ESP/ 2>/dev/null || echo "Klasörler eksik olabilir!"
 
       - name: Build Blackshark Package
         run: |
@@ -46,7 +45,7 @@ jobs:
           export PATH=$THEOS/bin:$PATH
           make clean package FINALPACKAGE=1 FOR_RELEASE=1
 
-      - name: Upload Artifact (V4)
+      - name: Upload Artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
