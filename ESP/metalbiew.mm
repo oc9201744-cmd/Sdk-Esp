@@ -1257,10 +1257,14 @@ auto GetTargetByCrossDist() {
       if (!Player -> RootComponent) 
         continue;
 
+      // ========== BAYILAN KONTROLÜ DÜZELTİLDİ ==========
       if (preferences.Config.SilentAim.IgnoreKnocked) {
-        if (Player -> Health == 0.0f)
+        // Bayılan (knocked) oyuncuları atla
+        // Knocked State: Health <= 0 AMA ölü değil (bDead = false)
+        if (Player -> Health <= 0.0f && !Player -> bDead)
           continue;
       }
+      // ================================================
 
       if (preferences.Config.SilentAim.IgnoreBot) {
         if (Player -> bEnsure)
@@ -1452,99 +1456,105 @@ void RenderESP(AHUD * HUD, int ScreenWidth, int ScreenHeight) {
             }
             auto WeaponManagerComponent = localPlayer -> WeaponManagerComponent;
 
+            // ========== AIMBOT - SADECE ATEŞ EDERKEN AKTİF ==========
             if (preferences.Config.SilentAim.AimBot) {
-              ASTExtraPlayerCharacter * Target = GetTargetByCrossDist();
+              // SADECE ATEŞ EDİYORSA aimbot çalışsın
+              if (localPlayer->bIsWeaponFiring) {  // ← YENİ: ATEŞ KONTROLÜ
+                ASTExtraPlayerCharacter * Target = GetTargetByCrossDist();
 
-              if (Target && Target -> RootComponent) {
+                if (Target && Target -> RootComponent) {
 
-                bool triggerOk = false;
-                if (preferences.Config.SilentAim.Trigger !=
-                  JsonPreferences::EAimTrigger::None) {
-                  if (preferences.Config.SilentAim.Trigger ==
-                    JsonPreferences::EAimTrigger::Shooting) {
-                    triggerOk = localPlayer -> bIsWeaponFiring;
-                  } else if (preferences.Config.SilentAim.Trigger ==
-                    JsonPreferences::EAimTrigger::Scoping) {
-                    triggerOk = localPlayer -> bIsGunADS;
-                  } else if (preferences.Config.SilentAim.Trigger ==
-                    JsonPreferences::EAimTrigger::Both) {
-                    triggerOk =
-                      localPlayer -> bIsWeaponFiring &&
-                      localPlayer -> bIsGunADS;
-                  } else if (preferences.Config.SilentAim.Trigger ==
-                    JsonPreferences::EAimTrigger::Any) {
-                    triggerOk =
-                      localPlayer -> bIsWeaponFiring ||
-                      localPlayer -> bIsGunADS;
-                  }
-                } else triggerOk = true;
-                if (triggerOk) {
-                  FVector targetAimPos;
-                  if (preferences.Config.SilentAim.Target ==
-                    JsonPreferences::EAimTarget::Head) {
-                    targetAimPos = Target -> GetBonePos("Head", {});
-                  }
-                  if (preferences.Config.SilentAim.Target ==
-                    JsonPreferences::EAimTarget::Chest) {
-                    targetAimPos = Target -> GetBonePos("pelvis", {});
-                  }
-                  if (preferences.Config.SilentAim.ReCo) {
-                    if (g_LocalPlayer -> bIsGunADS) {
-                      if (g_LocalPlayer -> bIsWeaponFiring) {
-                        float dist = g_LocalPlayer -> GetDistanceTo(Target) / 100.f;
-                        targetAimPos.Z -= dist * preferences.Config.SilentAim.Recc;
+                  bool triggerOk = false;
+                  if (preferences.Config.SilentAim.Trigger !=
+                    JsonPreferences::EAimTrigger::None) {
+                    if (preferences.Config.SilentAim.Trigger ==
+                      JsonPreferences::EAimTrigger::Shooting) {
+                      triggerOk = localPlayer -> bIsWeaponFiring;
+                    } else if (preferences.Config.SilentAim.Trigger ==
+                      JsonPreferences::EAimTrigger::Scoping) {
+                      triggerOk = localPlayer -> bIsGunADS;
+                    } else if (preferences.Config.SilentAim.Trigger ==
+                      JsonPreferences::EAimTrigger::Both) {
+                      triggerOk =
+                        localPlayer -> bIsWeaponFiring &&
+                        localPlayer -> bIsGunADS;
+                    } else if (preferences.Config.SilentAim.Trigger ==
+                      JsonPreferences::EAimTrigger::Any) {
+                      triggerOk =
+                        localPlayer -> bIsWeaponFiring ||
+                        localPlayer -> bIsGunADS;
+                    }
+                  } else triggerOk = true;
+                  if (triggerOk) {
+                    FVector targetAimPos;
+                    if (preferences.Config.SilentAim.Target ==
+                      JsonPreferences::EAimTarget::Head) {
+                      targetAimPos = Target -> GetBonePos("Head", {});
+                    }
+                    if (preferences.Config.SilentAim.Target ==
+                      JsonPreferences::EAimTarget::Chest) {
+                      targetAimPos = Target -> GetBonePos("pelvis", {});
+                    }
+                    if (preferences.Config.SilentAim.ReCo) {
+                      if (g_LocalPlayer -> bIsGunADS) {
+                        if (g_LocalPlayer -> bIsWeaponFiring) {
+                          float dist = g_LocalPlayer -> GetDistanceTo(Target) / 100.f;
+                          targetAimPos.Z -= dist * preferences.Config.SilentAim.Recc;
+                        }
                       }
                     }
-                  }
-                  if (WeaponManagerComponent) {
-                    auto propSlot = WeaponManagerComponent -> GetCurrentUsingPropSlot();
-                    if ((int) propSlot.GetValue() >= 1 &&
-                      (int) propSlot.GetValue() <= 3) {
-                      auto CurrentWeaponReplicated = (ASTExtraShootWeapon * ) WeaponManagerComponent -> CurrentWeaponReplicated;
-                      if (CurrentWeaponReplicated) {
-                        auto ShootWeaponComponent = CurrentWeaponReplicated -> ShootWeaponComponent;
-                        if (ShootWeaponComponent) {
-                          UShootWeaponEntity * ShootWeaponEntityComponent = ShootWeaponComponent -> ShootWeaponEntityComponent;
-                          if (ShootWeaponEntityComponent) {
-                            if (preferences.Config.SilentAim.Prediction) {
-                              ASTExtraVehicleBase * CurrentVehicle = Target -> CurrentVehicle;
-                              if (CurrentVehicle) {
-                                FVector LinearVelocity = CurrentVehicle -> ReplicatedMovement.LinearVelocity;
-                                float dist = localPlayer -> GetDistanceTo(
-                                  Target);
-                                auto timeToTravel = dist /
-                                  ShootWeaponEntityComponent -> BulletRange;
-                                targetAimPos = UKismetMathLibrary::Add_VectorVector(
-                                  targetAimPos,
-                                  UKismetMathLibrary::Multiply_VectorFloat(
-                                    LinearVelocity,
-                                    timeToTravel));
-                              } else {
-                                FVector Velocity = Target -> GetVelocity();
-                                float dist = localPlayer -> GetDistanceTo(
-                                  Target);
-                                auto timeToTravel = dist /
-                                  ShootWeaponEntityComponent -> BulletRange;
+                    if (WeaponManagerComponent) {
+                      auto propSlot = WeaponManagerComponent -> GetCurrentUsingPropSlot();
+                      if ((int) propSlot.GetValue() >= 1 &&
+                        (int) propSlot.GetValue() <= 3) {
+                        auto CurrentWeaponReplicated = (ASTExtraShootWeapon * ) WeaponManagerComponent -> CurrentWeaponReplicated;
+                        if (CurrentWeaponReplicated) {
+                          auto ShootWeaponComponent = CurrentWeaponReplicated -> ShootWeaponComponent;
+                          if (ShootWeaponComponent) {
+                            UShootWeaponEntity * ShootWeaponEntityComponent = ShootWeaponComponent -> ShootWeaponEntityComponent;
+                            if (ShootWeaponEntityComponent) {
+                              if (preferences.Config.SilentAim.Prediction) {
+                                ASTExtraVehicleBase * CurrentVehicle = Target -> CurrentVehicle;
+                                if (CurrentVehicle) {
+                                  FVector LinearVelocity = CurrentVehicle -> ReplicatedMovement.LinearVelocity;
+                                  float dist = localPlayer -> GetDistanceTo(
+                                    Target);
+                                  auto timeToTravel = dist /
+                                    ShootWeaponEntityComponent -> BulletRange;
+                                  targetAimPos = UKismetMathLibrary::Add_VectorVector(
+                                    targetAimPos,
+                                    UKismetMathLibrary::Multiply_VectorFloat(
+                                      LinearVelocity,
+                                      timeToTravel));
+                                } else {
+                                  FVector Velocity = Target -> GetVelocity();
+                                  float dist = localPlayer -> GetDistanceTo(
+                                    Target);
+                                  auto timeToTravel = dist /
+                                    ShootWeaponEntityComponent -> BulletRange;
 
-                                targetAimPos = UKismetMathLibrary::Add_VectorVector(
-                                  targetAimPos,
-                                  UKismetMathLibrary::Multiply_VectorFloat(
-                                    Velocity,
-                                    timeToTravel));
+                                  targetAimPos = UKismetMathLibrary::Add_VectorVector(
+                                    targetAimPos,
+                                    UKismetMathLibrary::Multiply_VectorFloat(
+                                      Velocity,
+                                      timeToTravel));
+                                }
                               }
+                              localPlayerController -> SetControlRotation(
+                                ToRotator(
+                                  localPlayerController -> PlayerCameraManager -> CameraCache.POV.Location,
+                                  targetAimPos), "");
                             }
-                            localPlayerController -> SetControlRotation(
-                              ToRotator(
-                                localPlayerController -> PlayerCameraManager -> CameraCache.POV.Location,
-                                targetAimPos), "");
                           }
                         }
                       }
                     }
                   }
                 }
-              }
+              } // ← ATEŞ KONTROLÜ BİTİŞ
             }
+            // ======================================================
+            
             if (preferences.Config.SilentAim.Enable) {
               auto WeaponManagerComponent = localPlayer -> WeaponManagerComponent;
               if (WeaponManagerComponent) {
