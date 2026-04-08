@@ -1,41 +1,6 @@
-// 1. ÖNCE standart kütüphaneleri dışarıda yükle
-#include <stdbool.h>
-#include <stdint.h>
-#include <sys/types.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <mach-o/dyld.h>
-
-// 2. MODÜL HATASINI SİLİP SÜPÜREN MAKROLAR
-// Derleyiciye bu kütüphanelerin zaten yüklendiğini zorla kabul ettiriyoruz
-#ifndef _STDBOOL_H
-#define _STDBOOL_H
-#endif
-#ifndef _STDINT_H
-#define _STDINT_H
-#endif
-#ifndef _SYS_TYPES_H
-#define _SYS_TYPES_H
-#endif
-
-// 3. EXTERN "C" ÇAKIŞMASINI ÖNLEMEK İÇİN DOBBY'Yİ KANDIRIYORUZ
-// Dobby'nin içindeki extern "C" bloğunu biz burada manuel kontrol altına alıyoruz
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// Dobby'nin içindeki include'ları devre dışı bırakmak için geçici hile
-#define dobby_h_include_guard
 #import <Foundation/Foundation.h>
-
-// 4. DOBBY'Yİ ÇAĞIR
+#include <mach-o/dyld.h>
 #include "dobby.h"
-
-#ifdef __cplusplus
-}
-#endif
 
 // --- OFFSETS ---
 #define OFFSET_HBCHECK          0x447B0
@@ -74,7 +39,6 @@ __attribute__((constructor))
 static void InitializeBypass() {
     intptr_t slide = (intptr_t)_dyld_get_image_vmaddr_slide(0);
     
-    // Eğer ana modül bulunamazsa ShadowTrackerExtra'yı ara (PUBG Fix)
     if (slide <= 0) {
         for (uint32_t i = 0; i < _dyld_image_count(); i++) {
             const char *name = _dyld_get_image_name(i);
