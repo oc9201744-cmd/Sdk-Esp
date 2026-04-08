@@ -1,231 +1,207 @@
-// ========================================
-// PUBG MOBILE ANTI-CHEAT BYPASS - CORRECT
-// ========================================
-// BAN FIX - Memory Patch Based
-// NO HOOKS - Direct Memory Modification
-// Assembly Analysis: anogs.asm
-// ========================================
+// bypass.mm
+// KAPALI BAN FİX - App termination ve background kontrolleri eklendi
 
 #import <Foundation/Foundation.h>
-#include <mach-o/dyld.h>
-#include <sys/mman.h>
-#include <mach/mach.h>
-#include "KittyMemory/KittyMemory.hpp"
+#import <UIKit/UIKit.h>
+#import <dooby/dooby.h>
 
-// ========================================
-// CRITICAL DISCOVERY - BAN NEDEN?
-// ========================================
+// ============================================================
+// MARK: - Sabitler
+// ============================================================
 
-/*
- * ÖNCEKI BYPASS BAN YEDİ ÇÜNKÜ:
- * 
- * 1. HOOK DETECTION (sub_102D48)
- *    String'ler:
- *    - "set_inline_hook_error"
- *    - "ms_set_inlie_hook" 
- *    - "inline_hook_opcode_dismatch"
- *    - "ms_hook_opcode"
- * 
- *    MSHookFunction tespit ediliyor!
- *    Opcode değişiklikleri kontrol ediliyor!
- *    
- * 2. MEMORY CRC ERROR
- *    - "mrpcs_data_crc_error"
- *    - "ms_data_crc"
- *    Hook'lar memory CRC'yi bozuyor!
- * 
- * 3. REPORT SYSTEM (sub_102B84)
- *    Tespit edilen hook'lar server'a raporlanıyor!
- * 
- * ÇÖZÜM:
- * - HOOK KULLANMA! (tespit edilir)
- * - Memory patch kullan (KittyMemory)
- * - Kritik fonksiyonları RET/NOP ile patch'le
- * - LOG ATMA! (tespit edilebilir)
- */
+static BOOL bypass_active = YES;
+static BOOL app_terminating = NO;
 
-// ========================================
-// CRITICAL OFFSETS (Assembly Verified)
-// ========================================
+// ============================================================
+// MARK: - Kapalı/Kapanma Kontrolleri Bypass
+// ============================================================
 
-// Hook Detection System
-#define OFFSET_HOOK_DETECT      0x102D48  // sub_102D48 - Hook detection ana fonksiyonu
-#define OFFSET_REPORT_FUNC      0x102B84  // sub_102B84 - Report to server
-
-// CRC/Hash System  
-#define OFFSET_CRC_CHECK        0x156F8   // CRC calculation
-#define OFFSET_HASH_CHECK       0x30028   // Hash verification
-
-// Heartbeat System
-#define OFFSET_HEARTBEAT        0x447B0   // Heartbeat check loop
-
-// TCJ System (already have these)
-#define OFFSET_ENTRY_GATE       0x44A50   // Entry gate
-#define OFFSET_TCJ_CRASHER      0x4471C   // TCJ destroyer
-#define OFFSET_CRASH_POINT      0xD5624   // Crash point
-
-// Data Integrity
-#define OFFSET_DATA_CHECK       0xE4554   // Data integrity check
-
-// ========================================
-// ARM64 PATCHES
-// ========================================
-
-// RET instruction (return immediately)
-static const unsigned char PATCH_RET[] = {
-    0xC0, 0x03, 0x5F, 0xD6  // RET
-};
-
-// MOV X0, #0; RET (return 0)
-static const unsigned char PATCH_RETURN_0[] = {
-    0x00, 0x00, 0x80, 0xD2,  // MOV X0, #0
-    0xC0, 0x03, 0x5F, 0xD6   // RET
-};
-
-// MOV W0, #0; RET (return 0 - 32bit)
-static const unsigned char PATCH_RETURN_0_W[] = {
-    0x00, 0x00, 0x80, 0x52,  // MOV W0, #0
-    0xC0, 0x03, 0x5F, 0xD6   // RET
-};
-
-// ========================================
-// HELPER FUNCTIONS
-// ========================================
-
-static bool ApplyMemoryPatch(uintptr_t offset, const unsigned char* patch, size_t size) {
-    uintptr_t base = (uintptr_t)_dyld_get_image_vmaddr_slide(0);
-    void* target = (void*)(base + offset);
-    
-    // Apply patch
-    KittyMemory::Memory_Status status = KittyMemory::memWrite(target, patch, size);
-    
-    return (status == KittyMemory::SUCCESS);
+// sub_EC504 - App state kontrolü (kapanırken tetiklenir)
+int Fake_sub_EC504(void) {
+    NSLog(@"[DOOBY] 🔓 App State Check - Bypassed (pretending running)");
+    // Her zaman "uygulama çalışıyor" de
+    return 1;
 }
 
-// ========================================
-// BYPASS SYSTEM
-// ========================================
-
-static void ApplyBypass() {
-    // ========================================
-    // PRIORITY 1: DISABLE HOOK DETECTION
-    // ========================================
-    
-    // Patch Hook Detection Function (sub_102D48)
-    // Assembly: Starts with STP X28, X27, [SP,#-0x20]!
-    // Patch: RET at start -> function returns immediately
-    // Effect: Hook detection NEVER runs
-    ApplyMemoryPatch(OFFSET_HOOK_DETECT, PATCH_RET, sizeof(PATCH_RET));
-    
-    // ========================================
-    // PRIORITY 2: DISABLE REPORT SYSTEM
-    // ========================================
-    
-    // Patch Report Function (sub_102B84)
-    // Effect: Reports NEVER sent to server
-    ApplyMemoryPatch(OFFSET_REPORT_FUNC, PATCH_RET, sizeof(PATCH_RET));
-    
-    // ========================================
-    // PRIORITY 3: DISABLE CRC/HASH CHECKS
-    // ========================================
-    
-    // Patch CRC Check (sub_156F8)
-    // Return 0 = CRC match / no error
-    ApplyMemoryPatch(OFFSET_CRC_CHECK, PATCH_RETURN_0, sizeof(PATCH_RETURN_0));
-    
-    // Patch Hash Check (sub_30028)
-    // Return 0 = Hash match / no error
-    ApplyMemoryPatch(OFFSET_HASH_CHECK, PATCH_RETURN_0, sizeof(PATCH_RETURN_0));
-    
-    // ========================================
-    // PRIORITY 4: DISABLE HEARTBEAT CHECKS
-    // ========================================
-    
-    // Patch Heartbeat (sub_447B0)
-    // Effect: Detection loop disabled
-    ApplyMemoryPatch(OFFSET_HEARTBEAT, PATCH_RET, sizeof(PATCH_RET));
-    
-    // ========================================
-    // PRIORITY 5: DISABLE CRASH CHAIN
-    // ========================================
-    
-    // Patch Entry Gate (sub_44A50)
-    ApplyMemoryPatch(OFFSET_ENTRY_GATE, PATCH_RET, sizeof(PATCH_RET));
-    
-    // Patch TCJ Crasher (sub_4471C)
-    ApplyMemoryPatch(OFFSET_TCJ_CRASHER, PATCH_RET, sizeof(PATCH_RET));
-    
-    // Patch Crash Point (sub_D5624)
-    ApplyMemoryPatch(OFFSET_CRASH_POINT, PATCH_RET, sizeof(PATCH_RET));
-    
-    // ========================================
-    // PRIORITY 6: DISABLE DATA INTEGRITY
-    // ========================================
-    
-    // Patch Data Check (sub_E4554)
-    // Return 0 = Data valid
-    ApplyMemoryPatch(OFFSET_DATA_CHECK, PATCH_RETURN_0_W, sizeof(PATCH_RETURN_0_W));
+// sub_EC7CC - App termination kontrolü
+int Fake_sub_EC7CC(void) {
+    NSLog(@"[DOOBY] 🔓 Termination Check - Bypassed");
+    // Kapanma sinyallerini engelle
+    return 0;
 }
 
-// ========================================
-// INITIALIZATION
-// ========================================
+// sub_63D4 - Kapanırken root alert gönderme
+void Fake_sub_63D4(void* buffer) {
+    NSLog(@"[DOOBY] 🔕 Root Alert on Exit - BLOCKED");
+    // Hiçbir şey gönderme
+    return;
+}
+
+// sub_6174 - Kapalıyken *20250421.1 gönderme
+void Fake_sub_6174(int type, void* data) {
+    NSLog(@"[DOOBY] 🔕 Background Report - BLOCKED (type: %d)", type);
+    // Tüm raporları engelle
+    return;
+}
+
+// sub_7EE4 - Arka planda veri yollama
+int Fake_sub_7EE4(void* arg1, void* arg2, void* arg3, void* arg4, void* arg5, void* arg6, void* arg7, void* arg8) {
+    NSLog(@"[DOOBY] 🔕 Background Data Send - BLOCKED");
+    return 0; // Hiçbir şey yollama
+}
+
+// sub_ECE4 - Log dosyası yazma (atsv4.dat)
+void Fake_sub_ECE4(void* output, void* input, size_t size) {
+    NSLog(@"[DOOBY] 🔕 Log File Write (atsv4.dat) - BLOCKED");
+    // Log yazmayı engelle
+    return;
+}
+
+// sub_ED338 - VM kontrolü
+void* Fake_sub_ED338(void* arg1, int arg2, void* arg3) {
+    NSLog(@"[DOOBY] 🔓 VM Detection - Bypassed");
+    static unsigned char fake_result[16] = {0};
+    return fake_result;
+}
+
+// sub_EE0C - Dosya okuma (vm_main.img, vm_x_task.img)
+int Fake_sub_EE0C(void* output, const char* filename, void* buffer) {
+    NSLog(@"[DOOBY] 🔓 File Read: %s - Return empty", filename);
+    return 0; // Dosya yokmuş gibi göster
+}
+
+// ============================================================
+// MARK: - App Delegate Hook (Objective-C)
+// ============================================================
+
+// applicationWillTerminate - kapanırken çalışan kodu engelle
+void Fake_applicationWillTerminate(id self, SEL _cmd, UIApplication* app) {
+    NSLog(@"[DOOBY] 🔕 applicationWillTerminate - BLOCKED (no report sent)");
+    app_terminating = YES;
+    // Orijinal terminate'i çağırma veya engelle
+    // [self do_original_terminate:app]; // ÇAĞIRMA!
+}
+
+// applicationDidEnterBackground - arka plana geçerken
+void Fake_applicationDidEnterBackground(id self, SEL _cmd, UIApplication* app) {
+    NSLog(@"[DOOBY] 🔕 applicationDidEnterBackground - BLOCKED");
+    // Arka planda hiçbir şey yapma
+}
+
+// applicationWillResignActive - pasifleşirken
+void Fake_applicationWillResignActive(id self, SEL _cmd, UIApplication* app) {
+    NSLog(@"[DOOBY] 🔕 applicationWillResignActive - BLOCKED");
+}
+
+// ============================================================
+// MARK: - Ana Fonksiyonlar (Önceki gibi)
+// ============================================================
+
+// Ace bypass
+void* Fake_sub_52B0(void* self) {
+    NSLog(@"[DOOBY][ACE] 🔓 Ace Init - Bypassed");
+    static unsigned char ace_struct[0xA8] = {0};
+    return ace_struct;
+}
+
+int Fake_sub_5300(void* self, int cmd) {
+    NSLog(@"[DOOBY][ACE] 🔓 Ace Command: %d", cmd);
+    return 0;
+}
+
+// Ortam kontrolü
+unsigned int Fake_sub_4C18(void* flags) {
+    NSLog(@"[DOOBY] 🔓 Environment - Clean");
+    return 0x00000000;
+}
+
+// Jailbreak
+void* Fake_sub_6BBFC(void) {
+    static unsigned char clean[4096] = {0};
+    return clean;
+}
+
+int Fake_sub_6996C(void) {
+    return 0; // debugger yok
+}
+
+// Checksum
+int Fake_sub_1733C(void* out, const char* file) {
+    if (out) *(unsigned int*)out = 0xDEADBEEF;
+    return 0;
+}
+
+// Module kontrol
+int Fake_sub_6AC4(void* out, const char* module) {
+    return 0; // module yok
+}
+
+// ============================================================
+// MARK: - Dooby HOOK (Kapalı kontroller eklendi)
+// ============================================================
+
+// Ana kontroller
+DOOBY_HOOK(sub_4C18, Fake_sub_4C18)
+DOOBY_HOOK(sub_6BBFC, Fake_sub_6BBFC)
+DOOBY_HOOK(sub_6996C, Fake_sub_6996C)
+DOOBY_HOOK(sub_1733C, Fake_sub_1733C)
+DOOBY_HOOK(sub_6AC4, Fake_sub_6AC4)
+
+// Ace kontrolleri
+DOOBY_HOOK(sub_52B0, Fake_sub_52B0)
+DOOBY_HOOK(sub_5300, Fake_sub_5300)
+
+// KAPALI/KAPANMA KONTROLLERİ (Bunlar çok önemli!)
+DOOBY_HOOK(sub_EC504, Fake_sub_EC504)      // App state
+DOOBY_HOOK(sub_EC7CC, Fake_sub_EC7CC)      // Termination
+DOOBY_HOOK(sub_63D4, Fake_sub_63D4)        // Root alert on exit
+DOOBY_HOOK(sub_6174, Fake_sub_6174)        // Background report
+DOOBY_HOOK(sub_7EE4, Fake_sub_7EE4)        // Background data
+DOOBY_HOOK(sub_ECE4, Fake_sub_ECE4)        // Log write
+DOOBY_HOOK(sub_ED338, Fake_sub_ED338)      // VM check
+DOOBY_HOOK(sub_EE0C, Fake_sub_EE0C)        // File read
+
+// ============================================================
+// MARK: - Objective-C Runtime Hook (App Delegate)
+// ============================================================
 
 __attribute__((constructor))
-static void Initialize() {
-    // Wait a bit for game to load
-    sleep(2);
+static void init() {
+    NSLog(@"[DOOBY][ACE] ========================================");
+    NSLog(@"[DOOBY][ACE] 🚀 KAPALI BAN FIX - FULL BYPASS LOADED");
+    NSLog(@"[DOOBY][ACE] ========================================");
+    NSLog(@"[DOOBY][ACE] ✅ App Termination Reports: BLOCKED");
+    NSLog(@"[DOOBY][ACE] ✅ Background Activity: BLOCKED");
+    NSLog(@"[DOOBY][ACE] ✅ Log File Writing: BLOCKED");
+    NSLog(@"[DOOBY][ACE] ✅ VM Detection: BYPASSED");
+    NSLog(@"[DOOBY][ACE] ========================================");
     
-    // Apply all patches silently
-    ApplyBypass();
+    // App delegate metodlarını hookla
+    Class appDelegateClass = NSClassFromString(@"AppDelegate");
+    if (!appDelegateClass) {
+        appDelegateClass = [UIApplication sharedApplication].delegate.class;
+    }
     
-    // NO LOGS - can be detected!
+    if (appDelegateClass) {
+        SEL terminateSel = @selector(applicationWillTerminate:);
+        Method origTerminate = class_getInstanceMethod(appDelegateClass, terminateSel);
+        if (origTerminate) {
+            class_replaceMethod(appDelegateClass, terminateSel, (IMP)Fake_applicationWillTerminate, "v@:@");
+            NSLog(@"[DOOBY] ✅ Hooked applicationWillTerminate:");
+        }
+        
+        SEL backgroundSel = @selector(applicationDidEnterBackground:);
+        Method origBackground = class_getInstanceMethod(appDelegateClass, backgroundSel);
+        if (origBackground) {
+            class_replaceMethod(appDelegateClass, backgroundSel, (IMP)Fake_applicationDidEnterBackground, "v@:@");
+            NSLog(@"[DOOBY] ✅ Hooked applicationDidEnterBackground:");
+        }
+        
+        SEL resignSel = @selector(applicationWillResignActive:);
+        Method origResign = class_getInstanceMethod(appDelegateClass, resignSel);
+        if (origResign) {
+            class_replaceMethod(appDelegateClass, resignSel, (IMP)Fake_applicationWillResignActive, "v@:@");
+            NSLog(@"[DOOBY] ✅ Hooked applicationWillResignActive:");
+        }
+    }
 }
-
-// ========================================
-// NOTES
-// ========================================
-
-/*
- * WHY THIS WORKS:
- * 
- * 1. NO HOOKS
- *    - MSHookFunction NOT used
- *    - No inline hook detection
- *    - No opcode mismatch
- * 
- * 2. DIRECT MEMORY PATCH
- *    - Writes to code section
- *    - Simple RET/MOV instructions
- *    - Harder to detect than hooks
- * 
- * 3. NO LOGS
- *    - NSLog NOT used
- *    - Silent operation
- *    - No evidence in console
- * 
- * 4. PRIORITY ORDER
- *    - Hook detection first (prevents ban)
- *    - Report system second (blocks telemetry)
- *    - CRC/Hash checks (prevents detection)
- *    - Then other systems
- * 
- * 5. MINIMAL PATCHES
- *    - Only 9 patches total
- *    - Each patch is minimal (4-8 bytes)
- *    - Less chance of detection
- * 
- * TESTING:
- * 
- * 1. Build and install
- * 2. Launch game
- * 3. Use mod features normally
- * 4. Monitor for ban (should not happen)
- * 
- * IF BAN STILL HAPPENS:
- * 
- * - Server-side detection (behavior analysis)
- * - Need to make mod less obvious
- * - Use features more carefully
- * - Delay between actions
- */
