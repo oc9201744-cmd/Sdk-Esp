@@ -3,7 +3,7 @@
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#import <dooby/dooby.h>
+#include "dooby/dooby.h"
 
 // ============================================================
 // MARK: - Sabitler
