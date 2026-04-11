@@ -1,99 +1,118 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <mach-o/dyld.h>
-#include <objc/runtime.h>
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
+#import <mach-o/dyld.h>
+#include <dlfcn.h>
+#include "dobby.h"
 
-// Dobby'nin doğru dosya yoluyla eklenmesi (Typo düzeltildi: dooby -> dobby)
-#include "dobby.h" 
+// Log prefix for debugging via Console.app
+#define LOG_TAG "[BaybarsBypass]"
+#define NSLog(...) NSLog(@LOG_TAG " " __VA_ARGS__)
 
-// ============================================================
-// MARK: - Anogs Slide Hesaplama
-// ============================================================
-
-static uintptr_t get_anogs_slide() {
-    static uintptr_t anogs_slide = 0;
-    if (anogs_slide == 0) {
-        uint32_t count = _dyld_image_count();
-        for (uint32_t i = 0; i < count; i++) {
-            const char *name = _dyld_get_image_name(i);
-            // Modül adını burada kontrol ediyoruz
-            if (name && strstr(name, "anogs")) {
-                anogs_slide = (uintptr_t)_dyld_get_image_vmaddr_slide(i);
-                NSLog(@"[BYPASS] Anogs modülü bulundu! Slide: 0x%lx", (long)anogs_slide);
-                break;
-            }
+// Hedef kütüphanenin ASLR (Address Space Layout Randomization) slide'ını bulmak için yardımcı fonksiyon
+uintptr_t get_target_image_slide(const char* image_name_substring) {
+    uint32_t count = _dyld_image_count();
+    for (uint32_t i = 0; i < count; i++) {
+        const char* name = _dyld_get_image_name(i);
+        if (strstr(name, image_name_substring)) {
+            return _dyld_get_image_vmaddr_slide(i);
         }
     }
-    return anogs_slide;
+    // Eğer framework değil de ana binary içine gömülüyse (statically linked)
+    return _dyld_get_image_vmaddr_slide(0);
 }
 
-// Makroyu anogs_slide kullanacak şekilde tanımlıyoruz
-#define DOBBY_HOOK(offset, fake_func) \
-    if (get_anogs_slide() != 0) { \
-        DobbyHook((void*)(get_anogs_slide() + 0x##offset), (void*)fake_func, NULL); \
+#pragma mark - 1. Exported API Hooks
+
+// Exported: AnoSDKInitEx_0
+static int (*orig_AnoSDKInitEx_0)(void* a1, void* a2, void* a3);
+int repl_AnoSDKInitEx_0(void* a1, void* a2, void* a3) {
+    NSLog(@"AnoSDKInitEx_0 tetiklendi. Init argümanları filtreleniyor...");
+    // Init akışını tamamen bozmamak için orijinali çağırıyoruz, 
+    // ancak dilersen burada a2/a3 konfigürasyon pointer'larını manipüle edebilirsin.
+    return orig_AnoSDKInitEx_0(a1, a2, a3);
+}
+
+// Exported: AnoSDKGetReportData
+// Sunucuya gönderilecek telemetri/tespit verilerini buradan çekiyor. İçini boşaltıyoruz.
+static int (*orig_AnoSDKGetReportData)(void* buffer, int* length);
+int repl_AnoSDKGetReportData(void* buffer, int* length) {
+    NSLog(@"AnoSDKGetReportData çağrıldı. Payload sıfırlanıyor!");
+    if (length != NULL) {
+        *length = 0; // Gönderilecek veri boyutunu 0 yapıyoruz
     }
-
-// ============================================================
-// MARK: - Fake Fonksiyonlar (Aynı kalıyor)
-// ============================================================
-
-int Fake_sub_EC504(void) { return 1; }
-int Fake_sub_EC7CC(void) { return 0; }
-void Fake_sub_63D4(void* b) { return; }
-void Fake_sub_6174(int t, void* d) { return; }
-int Fake_sub_7EE4(void* a1, void* a2, void* a3, void* a4, void* a5, void* a6, void* a7, void* a8) { return 0; }
-void Fake_sub_ECE4(void* o, void* i, size_t s) { return; }
-void* Fake_sub_ED338(void* a1, int a2, void* a3) { static unsigned char fr[16] = {0}; return fr; }
-int Fake_sub_EE0C(void* o, const char* f, void* b) { return 0; }
-void* Fake_sub_52B0(void* s) { static unsigned char ace[0xA8] = {0}; return ace; }
-int Fake_sub_5300(void* s, int c) { return 0; }
-unsigned int Fake_sub_4C18(void* f) { return 0x0; }
-void* Fake_sub_6BBFC(void) { static unsigned char c[4096] = {0}; return c; }
-int Fake_sub_6996C(void) { return 0; }
-int Fake_sub_1733C(void* o, const char* f) { if(o) *(uint32_t*)o = 0xDEADBEEF; return 0; }
-int Fake_sub_6AC4(void* o, const char* m) { return 0; }
-
-// App Delegate Hookları (Objective-C)
-void Fake_applicationWillTerminate(id self, SEL _cmd, UIApplication* app) { 
-    NSLog(@"[BYPASS] Terminate engellendi."); 
+    // 0 genelde başarılı/veri yok anlamına gelir. Gerekirse return 1 yapılabilir.
+    return 0; 
 }
 
-// ============================================================
-// MARK: - Init
-// ============================================================
+#pragma mark - 2. Offset (Internal) Hooks
 
-__attribute__((constructor))
-static void init() {
-    // Anogs modülünün yüklenmesini garantiye almak için kısa bir gecikme
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        
-        // DOOBY_HOOK değil, DOBBY_HOOK olarak düzelttik
-        DOBBY_HOOK(4C18, Fake_sub_4C18)
-        DOBBY_HOOK(6BBFC, Fake_sub_6BBFC)
-        DOBBY_HOOK(6996C, Fake_sub_6996C)
-        DOBBY_HOOK(1733C, Fake_sub_1733C)
-        DOBBY_HOOK(6AC4, Fake_sub_6AC4)
-        DOBBY_HOOK(52B0, Fake_sub_52B0)
-        DOBBY_HOOK(5300, Fake_sub_5300)
-        
-        // Kapalı/Kapanma Kontrolleri
-        DOBBY_HOOK(EC504, Fake_sub_EC504)
-        DOBBY_HOOK(EC7CC, Fake_sub_EC7CC)
-        DOBBY_HOOK(63D4, Fake_sub_63D4)
-        DOBBY_HOOK(6174, Fake_sub_6174)
-        DOBBY_HOOK(7EE4, Fake_sub_7EE4)
-        DOBBY_HOOK(ECE4, Fake_sub_ECE4)
-        DOBBY_HOOK(ED338, Fake_sub_ED338)
-        DOBBY_HOOK(EE0C, Fake_sub_EE0C)
+// Offset: REPORT (sub_3667C)
+static void* (*orig_report_sub_3667C)(void* a1, void* a2, void* a3);
+void* repl_report_sub_3667C(void* a1, void* a2, void* a3) {
+    NSLog(@"[!] Ana REPORT kanalı (sub_3667C) engellendi.");
+    return NULL; // Rapor gönderimini drop et
+}
 
-        // Obj-C Hookları
-        Class appDelegate = NSClassFromString(@"AppDelegate");
-        if (appDelegate) {
-            class_replaceMethod(appDelegate, @selector(applicationWillTerminate:), (IMP)Fake_applicationWillTerminate, "v@:@");
+// Offset: COREREPORT (sub_371E0+D8) -> Çekirdek güvenlik raporu
+static void* (*orig_corereport)(void* a1, void* a2);
+void* repl_corereport(void* a1, void* a2) {
+    NSLog(@"[!] COREREPORT TDM / Core raporu engellendi.");
+    return NULL; 
+}
+
+// Offset: HBCheck (sub_447B0) -> Heartbeat
+static bool (*orig_hbcheck)(void* a1);
+bool repl_hbcheck(void* a1) {
+    // Oyundan atılmamak için heartbeat kontrolünü her zaman "True" (Başarılı) döndürüyoruz.
+    NSLog(@"[~] HBCheck (Heartbeat) bypass edildi.");
+    return true; 
+}
+
+// Offset: sub_AC484 -> /config Endpoint İndirme
+static void* (*orig_config_download)(void* a1, void* a2);
+void* repl_config_download(void* a1, void* a2) {
+    NSLog(@"[~] /config indirme talebi yakalandı. Dinamik kurallar (custom_tcj) engelleniyor.");
+    return NULL; // Yeni hile tespit kurallarının (custom_tcj.zip) inmesini engeller
+}
+
+
+#pragma mark - Constructor / Injection Entry
+
+__attribute__((constructor)) static void init_baybars_bypass() {
+    // Binary belleğe tamamen otursun diye ufak bir gecikme ekliyoruz
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        NSLog(@"BaybarsBypass başlatılıyor... Memory hesaplamaları yapılıyor.");
+        
+        // Hedef kütüphanenin adını girin (Örn: "Tersafe", "Tss", veya ana binary ise hedef oyunun adı)
+        uintptr_t aslr_slide = get_target_image_slide("AnaOyunBinaryAdiVeyaSDK"); 
+        NSLog(@"ASLR Slide: 0x%lx", aslr_slide);
+
+        // 1. EXPORT EDILEN SEMBOLLERI HOOKLA (dlsym ile)
+        void *ptr_AnoSDKInitEx_0 = dlsym(RTLD_DEFAULT, "AnoSDKInitEx_0");
+        if (ptr_AnoSDKInitEx_0) {
+            DobbyHook(ptr_AnoSDKInitEx_0, (void *)repl_AnoSDKInitEx_0, (void **)&orig_AnoSDKInitEx_0);
         }
+
+        void *ptr_AnoGetReport = dlsym(RTLD_DEFAULT, "AnoSDKGetReportData");
+        if (ptr_AnoGetReport) {
+            DobbyHook(ptr_AnoGetReport, (void *)repl_AnoSDKGetReportData, (void **)&orig_AnoSDKGetReportData);
+        }
+
+        // 2. OFFSET BAZLI İÇ FONKSİYONLARI HOOKLA (ASLR + Offset)
+        // Not: Offset adresleri IDA'daki Base Adres'e göre (genelde 0x100000000) hesaplanmalıdır. 
+        // Eğer IDA base 0 ise direkt offseti toplayın.
         
-        NSLog(@"[BYPASS] Anogs Bypass Başarıyla Yüklendi!");
+        void *ptr_report = (void *)(aslr_slide + 0x3667C);
+        DobbyHook(ptr_report, (void *)repl_report_sub_3667C, (void **)&orig_report_sub_3667C);
+
+        void *ptr_corereport = (void *)(aslr_slide + 0x371E0); // +D8 branch'inin başı
+        DobbyHook(ptr_corereport, (void *)repl_corereport, (void **)&orig_corereport);
+
+        void *ptr_hbcheck = (void *)(aslr_slide + 0x447B0);
+        DobbyHook(ptr_hbcheck, (void *)repl_hbcheck, (void **)&orig_hbcheck);
+
+        void *ptr_config = (void *)(aslr_slide + 0xAC484);
+        DobbyHook(ptr_config, (void *)repl_config_download, (void **)&orig_config_download);
+
+        NSLog(@"Tüm ACE endpoint ve raporlama hookları başarıyla uygulandı.");
     });
 }
